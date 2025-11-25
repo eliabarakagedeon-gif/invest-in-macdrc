@@ -683,6 +683,22 @@
             color: #721c24;
             border: 1px solid #f5c6cb;
         }
+        
+        /* Loading spinner */
+        .spinner {
+            display: none;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255,255,255,.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -933,7 +949,10 @@
                         <label for="message" data-fr="Message" data-en="Message">Message</label>
                         <textarea id="message" class="form-control" required></textarea>
                     </div>
-                    <button type="submit" class="form-submit" data-fr="Envoyer le message" data-en="Send Message">Envoyer le message</button>
+                    <button type="submit" class="form-submit">
+                        <span data-fr="Envoyer le message" data-en="Send Message">Envoyer le message</span>
+                        <span class="spinner"></span>
+                    </button>
                     <div id="formMessage" class="form-message"></div>
                 </form>
             </div>
@@ -980,16 +999,24 @@
 
     <!-- Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     <script>
+        // Initialize EmailJS
+        (function() {
+            emailjs.init("YOUR_PUBLIC_KEY"); // Remplacez par votre clé publique EmailJS
+        })();
+        
         // Language Toggle
         const frBtn = document.getElementById('fr-btn');
         const enBtn = document.getElementById('en-btn');
         const elementsWithTranslation = document.querySelectorAll('[data-fr][data-en]');
+        let currentLang = 'fr';
         
         frBtn.addEventListener('click', () => {
             if (!frBtn.classList.contains('active')) {
                 frBtn.classList.add('active');
                 enBtn.classList.remove('active');
+                currentLang = 'fr';
                 translateTo('fr');
             }
         });
@@ -998,6 +1025,7 @@
             if (!enBtn.classList.contains('active')) {
                 enBtn.classList.add('active');
                 frBtn.classList.remove('active');
+                currentLang = 'en';
                 translateTo('en');
             }
         });
@@ -1077,12 +1105,16 @@
             }
         });
         
-        // Contact Form
+        // Contact Form with EmailJS
         const contactForm = document.getElementById('contactForm');
         const formMessage = document.getElementById('formMessage');
+        const spinner = document.querySelector('.spinner');
         
         contactForm.addEventListener('submit', (e) => {
             e.preventDefault();
+            
+            // Show spinner
+            spinner.style.display = 'inline-block';
             
             // Get form values
             const name = document.getElementById('name').value;
@@ -1090,28 +1122,69 @@
             const subject = document.getElementById('subject').value;
             const message = document.getElementById('message').value;
             
-            // Here you would normally send the data to a server
-            // For this example, we'll just show a success message
-            
-            formMessage.textContent = "Merci pour votre message. Nous vous répondrons dans les plus brefs délais.";
-            formMessage.classList.add('success');
-            formMessage.style.display = 'block';
-            
-            // Reset form
-            contactForm.reset();
-            
-            // Hide message after 5 seconds
-            setTimeout(() => {
-                formMessage.style.display = 'none';
-            }, 5000);
+            // Send email using EmailJS
+            emailjs.send('service_id', 'template_qr77q8s', {
+                from_name: name,
+                from_email: email,
+                subject: subject,
+                message: message,
+                to_email: 'mac-drc@outlook.fr'
+            })
+            .then(function(response) {
+                // Hide spinner
+                spinner.style.display = 'none';
+                
+                // Show success message
+                const successMsg = currentLang === 'fr' 
+                    ? "Merci pour votre message. Nous vous répondrons dans les plus brefs délais."
+                    : "Thank you for your message. We will get back to you as soon as possible.";
+                
+                formMessage.textContent = successMsg;
+                formMessage.classList.add('success');
+                formMessage.classList.remove('error');
+                formMessage.style.display = 'block';
+                
+                // Reset form
+                contactForm.reset();
+                
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    formMessage.style.display = 'none';
+                }, 5000);
+            }, function(error) {
+                // Hide spinner
+                spinner.style.display = 'none';
+                
+                // Show error message
+                const errorMsg = currentLang === 'fr' 
+                    ? "Une erreur s'est produite. Veuillez réessayer plus tard."
+                    : "An error occurred. Please try again later.";
+                
+                formMessage.textContent = errorMsg;
+                formMessage.classList.add('error');
+                formMessage.classList.remove('success');
+                formMessage.style.display = 'block';
+                
+                // Hide message after 5 seconds
+                setTimeout(() => {
+                    formMessage.style.display = 'none';
+                }, 5000);
+            });
         });
         
-        // Download Pitch Deck
+        // Download Pitch Deck based on language
         document.getElementById('downloadBtn').addEventListener('click', () => {
+            // Determine which PDF to download based on current language
+            const pdfFile = currentLang === 'fr' 
+                ? 'MAC-DRC_FR%20-%20Pitch%20Deck.pdf' 
+                : 'MAC-DRC_EN%20-%20Pitch%20Deck.pdf';
+            
             // Create a link element to download the PDF
             const link = document.createElement('a');
-            link.href = 'MAC-DRC_agr%20-%20Pitch%20Deck.pdf';
-            link.download = 'MAC-DRC_Pitch_Deck.pdf';
+            link.href = pdfFile;
+            link.download = currentLang === 'fr' 
+                ? 'MAC-DRC_FR_Pitch_Deck.pdf' 
+                : 'MAC-DRC_EN_Pitch_Deck.pdf';
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
